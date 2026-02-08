@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحدي خبراء تدوير المخلفات</title>
+    <style>
+        :root { --primary: #2c7a7b; --secondary: #edf2f7; --correct: #48bb78; --wrong: #f56565; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; padding: 20px; }
+        .game-container { max-width: 850px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 3px solid var(--primary); margin-bottom: 20px; }
+        .question-box { margin-bottom: 25px; display: none; }
+        .question-box.active { display: block; animation: fadeIn 0.5s; }
+        .q-text { font-size: 1.3em; font-weight: bold; color: #2d3748; margin-bottom: 15px; }
+        .type-badge { display: inline-block; background: var(--primary); color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.8em; margin-bottom: 10px; }
+        .options-grid { display: grid; gap: 10px; }
+        button.opt-btn { padding: 12px; border: 2px solid var(--secondary); border-radius: 10px; background: var(--secondary); cursor: pointer; text-align: right; transition: 0.3s; font-size: 1em; }
+        button.opt-btn:hover { border-color: var(--primary); }
+        input[type="text"] { width: 100%; padding: 12px; border: 2px solid var(--secondary); border-radius: 10px; margin-bottom: 10px; font-size: 1em; }
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 10px; display: none; font-weight: bold; }
+        .correct { background: #c6f6d5; color: #22543d; }
+        .wrong { background: #fed7d7; color: #822727; }
+        #controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .btn-main { background: var(--primary); color: white; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; }
+        .score-board { font-size: 1.1em; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="header">
+        <h1>لعبة "مستشارة التدوير الاستراتيجي" ♻️</h1>
+        <p>اختبري قدرتك على إدارة المخلفات الغذائية والزراعية بناءً على أسس علمية</p>
+    </div>
+
+    <div id="quiz-area">
+        <!-- سيتم توليد الأسئلة هنا بواسطة JavaScript -->
+    </div>
+
+    <div id="controls">
+        <div class="score-board">السؤال: <span id="current-idx">1</span> / 15</div>
+        <button class="btn-main" id="next-btn" onclick="handleNext()" style="display:none;">التالي</button>
+        <button class="btn-main" id="check-btn" onclick="validateAnswer()">تحقق من الإجابة</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        {
+            type: "MCQ",
+            q: "قام أحد مصانع 'تعليب التونة' بالتخلص من عظام وأحشاء الأسماك. كيف تصنفين هذه المخلفات؟",
+            options: ["مخلفات حقلية حيوانية", "مخلفات تصنيع زراعي حيوانية", "مخلفات مختلطة", "مخلفات نباتية"],
+            correct: 1,
+            hint: "مصدرها مصنع (تصنيع) وهي من أصل سمكي (حيواني)."
+        },
+        {
+            type: "TF",
+            q: "حرق المخلفات النباتية في الحقل هو وسيلة فعالة لإمداد التربة بالعناصر الضرورية وتحسين خصوبتها على المدى البعيد.",
+            correct: false,
+            hint: "الحرق يقتل الكائنات الدقيقة ويقلل الخصوبة ويضر بجودة المنتج [1]."
+        },
+        {
+            type: "Fill",
+            q: "تعتبر الأسمدة العضوية الناتجة عن التدوير ذات أهمية قصوى خاصة في الأراضي _____ والمستصلحة لأنها تعوض النقص الشديد في المادة العضوية.",
+            correct: "الرملية",
+            hint: "الأراضي الرملية تفتقر طبيعياً للمادة الدبالية [2]."
+        },
+        {
+            type: "Explain",
+            q: "عللي: لماذا تعتبر 'فضلات الدواجن' أغلى قيمة غذائية كعلف مقارنة بـ 'أتبان القمح'؟",
+            correct: "لأنها تحتوي على نسبة بروتين خام مرتفعة تصل إلى 20%، بينما الأتبان فقيرة في البروتين [3].",
+            hint: "فكر في محتوى البروتين لكل منهما."
+        },
+        {
+            type: "MCQ",
+            q: "أي من الممارسات التالية تعتبر 'معالجة ميكانيكية' للمخلفات لإنتاج مستلزمات منزلية؟",
+            options: ["التخمير البيولوجي", "الأكسدة الكيميائية", "تحويل حطب القطن إلى أخشاب", "إنتاج عيش الغراب"],
+            correct: 2,
+            hint: "استخدام الأخشاب من الحطب يندرج تحت الصناعات الميكانيكية الصغيرة [4]."
+        },
+        {
+            type: "TF",
+            q: "تُصنف المخلفات الناتجة عن 'أسواق الجملة والمطابخ' كمخلفات مختلطة، وتتميز بقيمة غذائية ثابتة.",
+            correct: false,
+            hint: "قيمتها غير ثابتة وتخضع لعوامل كثيرة بسبب تنوع مكوناتها [5]."
+        },
+        {
+            type: "Fill",
+            q: "يؤدي ترك المخلفات تجف عشوائياً تحت الشمس إلى انتشار أمراض _____ الجذور وتكاثر النيماتودا.",
+            correct: "عفن",
+            hint: "هذا من أضرار التجفيف الشمسي غير المحكوم [6]."
+        },
+        {
+            type: "Explain",
+            q: "عللي: كيف يساهم تدوير المخلفات الزراعية في زيادة فرص تصدير المحاصيل للخارج؟",
+            correct: "عن طريق التخلص الآمن من متبقيات المبيدات وتقليل الحاجة لاستخدامها، مما يجعل المنتج متوافقاً مع المعايير الدولية [5، 12].",
+            hint: "اربط بين الآفات والمبيدات ومعايير التصدير."
+        },
+        {
+            type: "MCQ",
+            q: "ما هي النسبة التقنية التي تمثل ما يتم إعادة تدويره حالياً من المخلفات في المملكة؟",
+            options: ["10%", "50%", "75%", "90%"],
+            correct: 0,
+            hint: "المصدر يشير إلى أن الاستفادة لا تتعدى 10% رغم كثرة الموارد [7]."
+        },
+        {
+            type: "TF",
+            q: "يشمل تعريف المخلفات الزراعية فضلات الحيوانات سواء قبل الذبح أو خلال عمليات التصنيع.",
+            correct: true,
+            hint: "التعريف واسع ويشمل مخلفات الحقل والمصنع والحيوان [8]."
+        },
+        {
+            type: "Fill",
+            q: "في عام 1441هـ، أنشأت المملكة المركز الوطني لإدارة _____ ليكون مسؤولاً عن عمليات التدوير.",
+            correct: "النفايات",
+            hint: "المركز الوطني لإدارة النفايات [9]."
+        },
+        {
+            type: "Explain",
+            q: "لماذا يعتبر حرق المخلفات سبباً في ظاهرة الاحتباس الحراري؟",
+            correct: "بسبب تصاعد غازات مثل ثاني أكسيد الكربون وأول أكسيد الكربون التي تزيد من تركيز الكربون في الغلاف الجوي وترفع الحرارة [5].",
+            hint: "فكر في الغازات المنبعثة وتأثيرها على الجو."
+        },
+        {
+            type: "MCQ",
+            q: "عند استخدام 'الكبس والطحن' للمخلفات لتسهيل استخدامها، فإننا نقوم بمعالجة:",
+            options: ["بيولوجية", "كيميائية", "فيزيائية", "نووية"],
+            correct: 2,
+            hint: "الكبس والطحن يغير الشكل المادي (الفيزيائي) [8]."
+        },
+        {
+            type: "TF",
+            q: "المخلفات الحقلية النباتية (مثل قش الأرز) تمثل الكم الأكبر من إجمالي المخلفات الزراعية.",
+            correct: true,
+            hint: "هذا النوع يمثل الكتلة الحيوية الأكبر في الحقول [10]."
+        },
+        {
+            type: "Fill",
+            q: "مشروع إنتاج فطر _____ يعتبر وسيلة لتحويل البقايا النباتية إلى غذاء بروتيني للإنسان وتوفير فرص عمل.",
+            correct: "عيش الغراب",
+            hint: "المعروف أيضاً بالمشروم [4]."
+        }
+    ];
+
+    let currentQ = 0;
+    let score = 0;
+
+    function renderQuestion() {
+        const q = questions[currentQ];
+        let html = `<div class="question-box active">
+            <span class="type-badge">${getTypeLabel(q.type)}</span>
+            <div class="q-text">${q.q}</div>`;
+
+        if (q.type === "MCQ") {
+            html += `<div class="options-grid">`;
+            q.options.forEach((opt, i) => {
+                html += `<button class="opt-btn" onclick="selectOpt(${i})">${opt}</button>`;
+            });
+            html += `</div>`;
+        } else if (q.type === "TF") {
+            html += `<div class="options-grid">
+                <button class="opt-btn" onclick="selectTF(true)">صح</button>
+                <button class="opt-btn" onclick="selectTF(false)">خطأ</button>
+            </div>`;
+        } else if (q.type === "Fill") {
+            html += `<input type="text" id="fill-input" placeholder="اكتب الكلمة المفقودة هنا...">`;
+        } else if (q.type === "Explain") {
+            html += `<p style="font-style: italic; color: #666;">(سيظهر نموذج الإجابة للمقارنة بعد الضغط على التحقق)</p>
+                     <textarea id="explain-input" style="width:100%; height:80px; border-radius:10px; padding:10px;" placeholder="اكتب تعليلك هنا..."></textarea>`;
+        }
+
+        html += `<div id="feedback-area" class="feedback"></div></div>`;
+        document.getElementById('quiz-area').innerHTML = html;
+        document.getElementById('current-idx').innerText = currentQ + 1;
+    }
+
+    function getTypeLabel(type) {
+        const labels = { MCQ: "اختيار من متعدد", TF: "صح أو خطأ", Fill: "أكمل الفراغ", Explain: "سؤال تحليل (علل)" };
+        return labels[type];
+    }
+
+    let selectedValue = null;
+
+    function selectOpt(i) { 
+        selectedValue = i; 
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach(b => b.style.borderColor = "#edf2f7");
+        btns[i].style.borderColor = "var(--primary)";
+    }
+    
+    function selectTF(val) { 
+        selectedValue = val; 
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach(b => b.style.borderColor = "#edf2f7");
+        btns[val ? 0 : 1].style.borderColor = "var(--primary)";
+    }
+
+    function validateAnswer() {
+        const q = questions[currentQ];
+        const fb = document.getElementById('feedback-area');
+        fb.style.display = "block";
+        let isCorrect = false;
+
+        if (q.type === "MCQ") {
+            isCorrect = (selectedValue === q.correct);
+        } else if (q.type === "TF") {
+            isCorrect = (selectedValue === q.correct);
+        } else if (q.type === "Fill") {
+            const val = document.getElementById('fill-input').value.trim();
+            isCorrect = val.includes(q.correct);
+        } else if (q.type === "Explain") {
+            fb.innerHTML = `✅ <b>نموذج الإجابة الصحيحة:</b> ${q.correct}<br><small>قارن إجابتك بالنموذج أعلاه.</small>`;
+            fb.className = "feedback correct";
+            document.getElementById('check-btn').style.display = "none";
+            document.getElementById('next-btn').style.display = "block";
+            return;
+        }
+
+        if (isCorrect) {
+            fb.innerHTML = "إجابة رائعة! " + q.hint;
+            fb.className = "feedback correct";
+            score++;
+        } else {
+            fb.innerHTML = "للأسف، إجابة غير دقيقة. " + q.hint;
+            fb.className = "feedback wrong";
+        }
+
+        document.getElementById('check-btn').style.display = "none";
+        document.getElementById('next-btn').style.display = "block";
+    }
+
+    function handleNext() {
+        currentQ++;
+        selectedValue = null;
+        if (currentQ < questions.length) {
+            renderQuestion();
+            document.getElementById('check-btn').style.display = "block";
+            document.getElementById('next-btn').style.display = "none";
+        } else {
+            showFinalResult();
+        }
+    }
+
+    function showFinalResult() {
+        document.getElementById('quiz-area').innerHTML = `
+            <div style="text-align:center; padding:40px;">
+                <h2>تهانينا! أنهيتِ التحدي 🏆</h2>
+                <p style="font-size:1.5em;">نتيجتك هي: ${score} من 15</p>
+                <p>أنتِ الآن أكثر وعياً بكيفية تحويل المخلفات إلى موارد اقتصادية وبيئية.</p>
+                <button class="btn-main" onclick="location.reload()">إعادة اللعبة</button>
+            </div>
+        `;
+        document.getElementById('controls').style.display = "none";
+    }
+
+    renderQuestion();
+</script>
+
+</body>
+</html>
